@@ -25,15 +25,20 @@ export class KycsService {
         en_lname: AuthorDto.en_firstname,
       };
   
-      const response = await axios.post('http://127.0.0.1:5000/valid/front', formData, {
+      const response = await axios.post('http://127.0.0.1:8000/valid/front', formData, {
         responseType: 'json',
         headers: {
             'Content-Type': 'multipart/form-data',
           },
+        timeout: 120000,
       });
       return response.data
     } catch (error) {
-      return "error"
+      console.log(error)
+      throw new HttpException(
+        "Problem with flask API",
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
@@ -42,7 +47,7 @@ export class KycsService {
         const formData = {
             img: back_card,
           };
-        const response = await axios.post('http://127.0.0.1:5000/valid/back', formData, {
+        const response = await axios.post('http://127.0.0.1:8000/valid/back', formData, {
           responseType: 'json',
           headers: {
               'Content-Type': 'multipart/form-data',
@@ -50,7 +55,10 @@ export class KycsService {
         });
         return response.data
       } catch (error) {
-        return "error"
+        throw new HttpException(
+          "Problem with flask API",
+          HttpStatus.BAD_REQUEST,
+        );
       }
   }
 
@@ -67,7 +75,7 @@ export class KycsService {
         const formData = new FormData();
         formData.append('img', face_img);
         formData.append('feat', JSON.stringify(kyc.picture_feats));
-        const response = await axios.post('http://127.0.0.1:5000/face_recognition', formData, {
+        const response = await axios.post('http://127.0.0.1:8000/face_recognition', formData, {
           responseType: 'json',
           headers: {
               'Content-Type': 'multipart/form-data',
@@ -75,7 +83,10 @@ export class KycsService {
         });
         return response.data
       } catch (error) {
-        return "error"
+        throw new HttpException(
+          "Problem with flask API",
+          HttpStatus.BAD_REQUEST,
+        );
       }
   }
 
@@ -186,6 +197,18 @@ export class KycsService {
             "Face doesn't match",
             HttpStatus.BAD_REQUEST,
           );
+    }
+  }
+
+  async getHello() {
+    try {
+      const response = await axios.get('http://127.0.0.1:8000/');
+      return response.data
+    } catch (error) {
+      throw new HttpException(
+        "Problem with flask API",
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 }

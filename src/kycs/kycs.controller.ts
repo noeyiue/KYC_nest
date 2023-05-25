@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
   Request,
   UploadedFile,
@@ -47,7 +48,11 @@ export class KycsController {
     @UploadedFile() file: Express.Multer.File
   ) {
     const userId = req.user.userId;
-    return await this.kycsService.addFaceImage(file, userId)
+    return await this.kycsService.addFaceImage(file, userId);
   }
 
+  @Get('hello')
+  async Hello() {
+    return await this.kycsService.getHello();
+  }
 }
