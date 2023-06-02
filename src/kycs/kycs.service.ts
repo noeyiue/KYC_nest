@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import axios from 'axios';
 import { AuthorDto } from './dto/authorization.dto';
+import { decryptData, encryptData } from 'src/utils/encrypt';
 
 @Injectable()
 export class KycsService {
@@ -25,12 +26,12 @@ export class KycsService {
         en_lname: AuthorDto.en_firstname,
       };
   
-      const response = await axios.post('http://127.0.0.1:8000/valid/front', formData, {
+      const response = await axios.post('http://flask:5000/valid/front', formData, {
         responseType: 'json',
         headers: {
             'Content-Type': 'multipart/form-data',
           },
-        timeout: 120000,
+        timeout: 300000,
       });
       return response.data
     } catch (error) {
@@ -47,7 +48,7 @@ export class KycsService {
         const formData = {
             img: back_card,
           };
-        const response = await axios.post('http://127.0.0.1:8000/valid/back', formData, {
+        const response = await axios.post('http://flask:5000/valid/back', formData, {
           responseType: 'json',
           headers: {
               'Content-Type': 'multipart/form-data',
@@ -75,7 +76,7 @@ export class KycsService {
         const formData = new FormData();
         formData.append('img', face_img);
         formData.append('feat', JSON.stringify(kyc.picture_feats));
-        const response = await axios.post('http://127.0.0.1:8000/face_recognition', formData, {
+        const response = await axios.post('http://flask:5000/face_recognition', formData, {
           responseType: 'json',
           headers: {
               'Content-Type': 'multipart/form-data',
@@ -169,7 +170,8 @@ export class KycsService {
             HttpStatus.BAD_REQUEST,
           );
     }
-    await this.kycRepository.findOneAndUpdateInUser(userId, "laser_code", result.laser_code);
+    const laser = result.laser_code
+    await this.kycRepository.findOneAndUpdateInUser(userId, "laser_code", encryptData(laser));
     return await this.kycRepository.findOneAndUpdateInKyc(userId, "back_image", filename);
   }
 
@@ -200,9 +202,14 @@ export class KycsService {
     }
   }
 
+  async test(file: Express.Multer.File) {
+    const imageUrl = await this.s3Service.uploadFileWithPresignedUrl(file);
+    return { imageUrl };
+  }
+
   async getHello() {
     try {
-      const response = await axios.get('http://127.0.0.1:8000/');
+      const response = await axios.get('http://flask:5000/');
       return response.data
     } catch (error) {
       throw new HttpException(
@@ -210,5 +217,14 @@ export class KycsService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  async encrypt(text: string) {
+    console.log(text);
+    const en = encryptData(text);
+    console.log(en);
+    const encryptedData = Buffer.from(en, 'base64');
+    console.log(decryptData(encryptedData).toString());
+    return en;
   }
 }

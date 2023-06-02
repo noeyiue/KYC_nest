@@ -51,8 +51,20 @@ export class KycsController {
     return await this.kycsService.addFaceImage(file, userId);
   }
 
+  @Post('encrypted')
+  async encrypt() {
+    return await this.kycsService.encrypt("Hello");
+  }
+
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(@UploadedFile() file: Express.Multer.File) {
+    return await this.kycsService.test(file);
+  }
+
   @Get('hello')
   async Hello() {
     return await this.kycsService.getHello();
   }
 }
+

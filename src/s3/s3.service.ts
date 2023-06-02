@@ -3,9 +3,12 @@ import {
   PutObjectCommand,
   PutObjectCommandInput,
   PutObjectCommandOutput,
+  GetObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ConfigService } from '@nestjs/config';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class S3Service {
@@ -45,5 +48,29 @@ export class S3Service {
       this.logger.error('Cannot save file inside s3', err);
       throw err;
     }
+  }
+
+  async generatePresignedUrl(key: string): Promise<string> {
+    const bucket = process.env.S3_BUCKET;
+    const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+
+    try {
+      const signedUrl = await getSignedUrl(this.s3, command, {
+        expiresIn: 2 * 60, // Expiration time in seconds
+      });
+
+      return signedUrl;
+    } catch (err) {
+      console.error('Failed to generate pre-signed URL', err);
+      throw err;
+    }
+  }
+
+  async uploadFileWithPresignedUrl(file: Express.Multer.File): Promise<string> {
+    const key = uuidv4(); // Generate a unique key for the file
+    await this.uploadFile(file, key);
+
+    const presignedUrl = await this.generatePresignedUrl(key);
+    return presignedUrl;
   }
 }

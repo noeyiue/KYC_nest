@@ -4,6 +4,7 @@ import { FilterQuery, Model } from 'mongoose';
 import { User, UserDocument } from 'src/users/schema/users.schema';
 import { Kyc, KycDocument } from './schema/kycs.schema';
 import { AuthorDto } from './dto/authorization.dto';
+import { encryptData } from 'src/utils/encrypt';
 
 @Injectable()
 export class KycRepository {
@@ -28,7 +29,7 @@ export class KycRepository {
   async findOneAndUpdateDtoInUser(userId: string, authorDto: AuthorDto): Promise<User> {
     const { id_num, en_firstname, en_lastname } = authorDto;
     const updateQuery = {
-        id_num,
+        id_num : encryptData(id_num),
         en_firstname,
         en_lastname,
       };
@@ -39,7 +40,7 @@ export class KycRepository {
     return this.findOneInUser({ userId: userId });
   }
 
-  async findOneAndUpdateInUser(userId: string, updateField: string , fieldValue: string): Promise<User> {
+  async findOneAndUpdateInUser(userId: string, updateField: string , fieldValue: any): Promise<User> {
     const updateQuery = { [updateField]: fieldValue };
     await this.userModel.findOneAndUpdate(
       { userId: userId },
