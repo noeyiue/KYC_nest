@@ -5,12 +5,16 @@ services:
       context: .  
     ports:
       - 3001:3001  
+    env_file:
+      - .env
     depends_on:
       - mongo
   mongo:
     image: mongo:latest
     ports:
       - 27017:27017  
+    env_file:
+      - .env
     volumes:
       - mongo-data:/data/db 
 
