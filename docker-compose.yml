@@ -2,7 +2,7 @@ version: '3'
 services:
   nest:
     build:
-      context: ./nestjs-s3  
+      context: .  
     ports:
       - 3001:3001  
     depends_on:
