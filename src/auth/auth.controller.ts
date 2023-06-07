@@ -16,6 +16,7 @@ export class AuthController {
 
   @Post(`signup`)
   async signup(@Body() signUpDto: SignUpDto) {
-    return this.authService.signup(signUpDto.username, signUpDto.password, signUpDto.firstname, signUpDto.lastname, signUpDto.email, signUpDto.phone);
+    console.log(signUpDto.en_firstname)
+    return this.authService.signup(signUpDto.username, signUpDto.password, signUpDto.th_firstname, signUpDto.th_lastname, signUpDto.en_firstname, signUpDto.en_lastname, signUpDto.id_num, signUpDto.email, signUpDto.phone);
   }
 }

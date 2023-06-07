@@ -20,13 +20,13 @@ export class User {
   @Prop({ required: true})
   th_lastname: string;
 
-  @Prop()
+  @Prop({ required: true})
   en_firstname: string; 
 
-  @Prop()
+  @Prop({ required: true})
   en_lastname: string;
 
-  @Prop({ unique: true})
+  @Prop({ unique: true })
   id_num: string;
 
   @Prop()

@@ -23,10 +23,10 @@ export class KycsController {
   async addFrontImg(
     @Request() req: any,
     @UploadedFile() file: Express.Multer.File,
-    @Body() AuthorDto: AuthorDto,
+    // @Body() AuthorDto: AuthorDto,
   ) {
     const userId = req.user.userId;
-    return await this.kycsService.addFrontImage(file, userId, AuthorDto);
+    return await this.kycsService.addFrontImage(file, userId);
   }
 
   @UseGuards(JwtAuthGuard)

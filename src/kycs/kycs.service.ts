@@ -4,7 +4,7 @@ import { KycRepository } from './kycs.repository';
 import { v4 as uuidv4 } from 'uuid';
 
 import axios from 'axios';
-import { AuthorDto } from './dto/authorization.dto';
+// import { AuthorDto } from './dto/authorization.dto';
 import { decryptData, encryptData } from 'src/utils/encrypt';
 
 @Injectable()
@@ -14,81 +14,96 @@ export class KycsService {
     private s3Service: S3Service,
   ) {}
 
-  async check_valid_frontid(front_card: string, AuthorDto: AuthorDto, user: any) {
-    const { th_firstname, th_lastname } = user;
+  async check_valid_frontid(front_card: string, user: any) {
+    const { th_firstname, th_lastname, en_firstname, en_lastname, id_num } =
+      user;
+    const encryptedData = Buffer.from(id_num, 'base64');
     try {
       const formData = {
         img: front_card,
-        id_num: AuthorDto.id_num,
+        id_num: decryptData(encryptedData).toString(),
         th_fname: th_firstname,
         th_lname: th_lastname,
-        en_fname: AuthorDto.en_firstname,
-        en_lname: AuthorDto.en_firstname,
+        en_fname: en_firstname,
+        en_lname: en_lastname,
       };
-  
-      const response = await axios.post('http://flask:5000/valid/front', formData, {
-        responseType: 'json',
-        headers: {
+
+      const response = await axios.post(
+        `${process.env.FLASK_URL}/valid/front`,
+        formData,
+        {
+          responseType: 'json',
+          headers: {
             'Content-Type': 'multipart/form-data',
           },
-        timeout: 300000,
-      });
-      return response.data
-    } catch (error) {
-      console.log(error)
-      throw new HttpException(
-        "Problem with flask API",
-        HttpStatus.BAD_REQUEST,
+          timeout: 300000,
+        },
       );
+      return response.data;
+    } catch (error) {
+      console.log(error.response.status);
+      if (error.response.status === 501) {
+        throw new HttpException('Cannot read data on picture', 501);
+      }
+      throw new HttpException('Problem with flask API', HttpStatus.BAD_REQUEST);
     }
   }
 
   async check_valid_backid(back_card: string) {
     try {
-        const formData = {
-            img: back_card,
-          };
-        const response = await axios.post('http://flask:5000/valid/back', formData, {
+      const formData = {
+        img: back_card,
+      };
+      const response = await axios.post(
+        `${process.env.FLASK_URL}/valid/back`,
+        formData,
+        {
           responseType: 'json',
           headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-        });
-        return response.data
-      } catch (error) {
+            'Content-Type': 'multipart/form-data',
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      if (error.response.status === 501) {
+        throw new HttpException('Cannot read data on picture', 501);
+      } else {
         throw new HttpException(
-          "Problem with flask API",
+          'Problem with flask API',
           HttpStatus.BAD_REQUEST,
         );
       }
+    }
   }
 
   async face_reg(face_img: string, userId: string) {
-    const kyc = await this.kycRepository.findOneInKyc({ userId: userId});
+    const kyc = await this.kycRepository.findOneInKyc({ userId: userId });
 
     if (!kyc.picture_feats) {
-        throw new HttpException(
-            'Not vertify id card yet',
-            HttpStatus.BAD_REQUEST,
-          );
+      throw new HttpException(
+        'Not vertify id card yet',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     try {
-        const formData = new FormData();
-        formData.append('img', face_img);
-        formData.append('feat', JSON.stringify(kyc.picture_feats));
-        const response = await axios.post('http://flask:5000/face_recognition', formData, {
+      const formData = new FormData();
+      formData.append('img', face_img);
+      formData.append('feat', JSON.stringify(kyc.picture_feats));
+      const response = await axios.post(
+        `${process.env.FLASK_URL}/face_recognition`,
+        formData,
+        {
           responseType: 'json',
           headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-        });
-        return response.data
-      } catch (error) {
-        throw new HttpException(
-          "Problem with flask API",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+            'Content-Type': 'multipart/form-data',
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      throw new HttpException('Problem with flask API', HttpStatus.BAD_REQUEST);
+    }
   }
 
   async createKyc(userId: string) {
@@ -103,11 +118,12 @@ export class KycsService {
     });
   }
 
-  async addFrontImage(file: Express.Multer.File, userId: string, AuthorDto: AuthorDto) {
-    if (!userId || !file || !AuthorDto.id_num || !AuthorDto.en_firstname || !AuthorDto.id_num) {
+  async addFrontImage(file: Express.Multer.File, userId: string) {
+    if (!userId || !file) {
       throw new HttpException('Missing data', HttpStatus.BAD_REQUEST);
     }
     const user = await this.kycRepository.findOneInUser({ userId });
+    console.log(user);
     if (!user) {
       throw new HttpException(
         'UserId does not exisiting',
@@ -126,25 +142,29 @@ export class KycsService {
     const key = `${file.fieldname}${Date.now()}`;
     const imageUrl = await this.s3Service.uploadFile(file, key);
     const filename = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
-    console.log(filename)
-    const result = await this.check_valid_frontid(filename, AuthorDto, user);
-    if (result == "error") {
-        // Go to delete img in aws s3
+    console.log(filename);
+    const result = await this.check_valid_frontid(filename, user);
+    if (result == 'error') {
+      // Go to delete img in aws s3
 
-        throw new HttpException(
-            'Image not correct format',
-            HttpStatus.BAD_REQUEST,
-          );
+      throw new HttpException(
+        'Image not correct format',
+        HttpStatus.BAD_REQUEST,
+      );
     }
-    const result1 = await this.kycRepository.findOneAndUpdateInKyc(userId, "picture_feats", result.feat);
+    const result1 = await this.kycRepository.findOneAndUpdateInKyc(
+      userId,
+      'picture_feats',
+      result.feat,
+    );
     if (!result1) {
-        throw new HttpException(
-            "Can't update data",
-            HttpStatus.BAD_REQUEST,
-          );
+      throw new HttpException("Can't update data", HttpStatus.BAD_REQUEST);
     }
-    await this.kycRepository.findOneAndUpdateDtoInUser(userId, AuthorDto)
-    return await this.kycRepository.findOneAndUpdateInKyc(userId, "front_image", filename);
+    return await this.kycRepository.findOneAndUpdateInKyc(
+      userId,
+      'front_image',
+      filename,
+    );
   }
 
   async addBackImage(file: Express.Multer.File, userId: string) {
@@ -157,27 +177,35 @@ export class KycsService {
         'UserId does not exisiting',
         HttpStatus.BAD_REQUEST,
       );
-    }    
+    }
     const key = `${file.fieldname}${Date.now()}`;
     const imageUrl = await this.s3Service.uploadFile(file, key);
     const filename = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
     const result = await this.check_valid_backid(filename);
-    if (result == "error") {
-        // Go to delete img in aws s3
+    if (result == 'error') {
+      // Go to delete img in aws s3
 
-        throw new HttpException(
-            'Image not correct format',
-            HttpStatus.BAD_REQUEST,
-          );
+      throw new HttpException(
+        'Image not correct format',
+        HttpStatus.BAD_REQUEST,
+      );
     }
-    const laser = result.laser_code
-    await this.kycRepository.findOneAndUpdateInUser(userId, "laser_code", encryptData(laser));
-    return await this.kycRepository.findOneAndUpdateInKyc(userId, "back_image", filename);
+    const laser = result.laser_code;
+    await this.kycRepository.findOneAndUpdateInUser(
+      userId,
+      'laser_code',
+      encryptData(laser),
+    );
+    return await this.kycRepository.findOneAndUpdateInKyc(
+      userId,
+      'back_image',
+      filename,
+    );
   }
 
   async addFaceImage(file: Express.Multer.File, userId: string) {
     if (!userId || !file) {
-        throw new HttpException('Missing data', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Missing data', HttpStatus.BAD_REQUEST);
     }
     const user = await this.kycRepository.findOneInUser({ userId });
     if (!user) {
@@ -185,20 +213,25 @@ export class KycsService {
         'UserId does not exisiting',
         HttpStatus.BAD_REQUEST,
       );
-    }    
+    }
     const key = `${file.fieldname}${Date.now()}`;
     const imageUrl = await this.s3Service.uploadFile(file, key);
     const filename = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
     const result = await this.face_reg(filename, userId);
     if (result.sims > 0.55) {
-        await this.kycRepository.findOneAndUpdateInKyc(userId, "face_image", filename)
-        const result1 = await this.kycRepository.findOneAndUpdateInKyc(userId, "kyc_result", true)
-        return result1
+      await this.kycRepository.findOneAndUpdateInKyc(
+        userId,
+        'face_image',
+        filename,
+      );
+      const result1 = await this.kycRepository.findOneAndUpdateInKyc(
+        userId,
+        'kyc_result',
+        true,
+      );
+      return result1;
     } else {
-        throw new HttpException(
-            "Face doesn't match",
-            HttpStatus.BAD_REQUEST,
-          );
+      throw new HttpException("Face doesn't match", 402);
     }
   }
 
@@ -209,13 +242,10 @@ export class KycsService {
 
   async getHello() {
     try {
-      const response = await axios.get('http://flask:5000/');
-      return response.data
+      const response = await axios.get(`${process.env.FLASK_URL}/`);
+      return response.data;
     } catch (error) {
-      throw new HttpException(
-        "Problem with flask API",
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('Problem with flask API', HttpStatus.BAD_REQUEST);
     }
   }
 

@@ -31,7 +31,7 @@ export class AuthService {
     };
   }
 
-  async signup(username: string, password: string, firstname: string, lastname: string, email: string, phone: string): Promise<any> {
+  async signup(username: string, password: string, th_firstname: string, th_lastname: string, en_firstname: string, en_lastname: string, id_num: string, email: string, phone: string): Promise<any> {
     const user1 = await this.usersService.findOneByEmailorPhone(email, phone)
     const user2 = await this.usersService.findOne(username);
     
@@ -42,7 +42,7 @@ export class AuthService {
       );
     }
     const hash = await bcrypt.hash(password, saltOrRound);
-    const newUser = await this.usersService.createUser(username, hash, firstname, lastname, email, phone);
+    const newUser = await this.usersService.createUser(username, hash, th_firstname, th_lastname, en_firstname, en_lastname, id_num , email, phone);
     return {
       userId: newUser.userId,
     };
