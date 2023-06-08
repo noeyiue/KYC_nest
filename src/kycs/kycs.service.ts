@@ -231,7 +231,7 @@ export class KycsService {
       );
       return result1;
     } else {
-      throw new HttpException("Face doesn't match", 402);
+      throw new HttpException("Face doesn't match", 500);
     }
   }
 
